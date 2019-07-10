@@ -257,18 +257,18 @@ if __name__ == '__main__':
         v_process_pool.close()
         v_process_pool.join()
 
-        #If any exception in any task
-        if not all([v_result.successful() for v_result in v_result_list]):
-            print('Some exception has occurred in the subprocesses. Please, check the log file.')
-
-        for v_result in v_result_list:
-            if not v_result.successful():
-                try:
-                    v_result.get()
-                except Exception:
-                    print(traceback.format_exc())
-
         #Write output file
         v_output_workbook.save(v_options.output_file)
+
+        #If any exception in any task
+        if not all([v_result.successful() for v_result in v_result_list]):
+            print('Some exception has occurred in the subprocesses. Please, check the exceptions below:')
+
+            for v_result in v_result_list:
+                if not v_result.successful():
+                    try:
+                        v_result.get()
+                    except Exception:
+                        print(traceback.format_exc())
     except Exception:
         print(traceback.format_exc())
