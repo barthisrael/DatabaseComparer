@@ -597,7 +597,6 @@ def get_compare_tables_data_tasks(p_database_1=None, p_database_2=None, p_block_
         INNER JOIN select_columns sc
                 ON st.table_schema = sc.table_schema
                AND st.table_name = sc.table_name
-        WHERE st.table_name = 'script_carregamento'
         ORDER BY st.table_schema,
                  st.table_name
     '''
