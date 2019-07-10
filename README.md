@@ -3,12 +3,17 @@ Compare PostgreSQL databases objects and data and generates a report containing 
 
 Sample call:
 
+```bash
 python compare_databases.py --block-size 500 --output-file output.xlsx --source-database-connection HOST1:PORT1:DATABASE1:USER1:PASSWORD1 --target-database-connection HOST2:PORT2:DATABASE2:USER2:PASSWORD2
+```
 
 This will allow each subprocess query blocks of at most 500 registers in each database at a time.
+Blocksize parameter is used to tune memory usage.
+
 After comparison, will generate an output file named 'output.xlsx', containing DDL/DML commands to be applied in source database in order to become like target database.
 
 The script will open as many subprocess as cores your cpu have and run tasks in parallel to get a faster result.
+Will also reduce memory 
 
 Objects that the app deals with:
 
