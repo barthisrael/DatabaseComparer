@@ -7,13 +7,13 @@ Sample call:
 python compare_databases.py --block-size 500 --output-file output.xlsx --source-database-connection HOST1:PORT1:DATABASE1:USER1:PASSWORD1 --target-database-connection HOST2:PORT2:DATABASE2:USER2:PASSWORD2
 ```
 
-This will allow each subprocess query blocks of at most 500 registers in each database at a time.
-Blocksize parameter is used to tune memory usage.
+The script will open as many subprocess as cores your cpu have and run tasks in parallel to get a faster result.
+
+Will also reduce memory using block-size parameter. You can set it as you want (greater than 0) to tune memory usage according to your machine.
+
+In the example, will allow each subprocess query blocks of at most 500 registers in each database at a time.
 
 After comparison, will generate an output file named 'output.xlsx', containing DDL/DML commands to be applied in source database in order to become like target database.
-
-The script will open as many subprocess as cores your cpu have and run tasks in parallel to get a faster result.
-Will also reduce memory 
 
 Objects that the app deals with:
 
