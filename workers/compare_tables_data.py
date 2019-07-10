@@ -182,7 +182,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                         p_set=','.join([
                                             '{p_column} = {p_value}::{p_type}'.format(
                                                 p_column=v_diff['column'],
-                                                p_value="'{p_value}'".format(p_value=str(v_diff['new_value']).replace("'", "''")) if v_diff['new_value'] is not None else 'NULL',
+                                                p_value='$data_comparer${p_value}$data_comparer$'.format(p_value=str(v_diff['new_value'])) if v_diff['new_value'] is not None else 'NULL',
                                                 p_type=v_column_type_dict[v_diff['column']]
                                             )
                                             for v_diff in v_all_diffs
@@ -190,7 +190,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                         p_condition=' AND '.join([
                                             '{p_column} = {p_value}::{p_type}'.format(
                                                 p_column=v_column,
-                                                p_value="'{p_value}'".format(p_value=str(v_row_2[v_column]).replace("'", "''")) if v_row_2[v_column] is not None else 'NULL',
+                                                p_value='$data_comparer${p_value}$data_comparer$'.format(p_value=str(v_row_2[v_column])) if v_row_2[v_column] is not None else 'NULL',
                                                 p_type=v_column_type_dict[v_column]
                                             )
                                             for v_column in v_key
@@ -223,7 +223,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                     p_condition=' AND '.join([
                                         '{p_column} = {p_value}::{p_type}'.format(
                                             p_column=v_column,
-                                            p_value="'{p_value}'".format(p_value=str(v_row_1[v_column]).replace("'", "''")) if v_row_1[v_column] is not None else 'NULL',
+                                            p_value='$data_comparer${p_value}$data_comparer$'.format(p_value=str(v_row_1[v_column])) if v_row_1[v_column] is not None else 'NULL',
                                             p_type=v_column_type_dict[v_column]
                                         )
                                         for v_column in v_key
@@ -257,7 +257,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                     p_columns=','.join(v_table_2.Columns),
                                     p_values=','.join([
                                         '{p_value}::{p_type}'.format(
-                                            p_value="'{p_value}'".format(p_value=str(v_row_2[v_column]).replace("'", "''")) if v_row_2[v_column] is not None else 'NULL',
+                                            p_value='$data_comparer${p_value}$data_comparer$'.format(p_value=str(v_row_2[v_column])) if v_row_2[v_column] is not None else 'NULL',
                                             p_type=v_column_type_dict[v_column]
                                         )
                                         for v_column in v_table_2.Columns
@@ -305,7 +305,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                     p_columns=','.join(v_table_2.Columns),
                                     p_values=','.join([
                                         '{p_value}::{p_type}'.format(
-                                            p_value="'{p_value}'".format(p_value=str(v_row_2[v_column]).replace("'", "''")) if v_row_2[v_column] is not None else 'NULL',
+                                            p_value='$data_comparer${p_value}$data_comparer$'.format(p_value=str(v_row_2[v_column])) if v_row_2[v_column] is not None else 'NULL',
                                             p_type=v_column_type_dict[v_column]
                                         )
                                         for v_column in v_table_2.Columns
@@ -348,7 +348,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                     p_condition=' AND '.join([
                                         '{p_column} = {p_value}::{p_type}'.format(
                                             p_column=v_column,
-                                            p_value="'{p_value}'".format(p_value=str(v_row_1[v_column]).replace("'", "''")) if v_row_1[v_column] is not None else 'NULL',
+                                            p_value='$data_comparer${p_value}$data_comparer$'.format(p_value=str(v_row_1[v_column])) if v_row_1[v_column] is not None else 'NULL',
                                             p_type=v_column_type_dict[v_column]
                                         )
                                         for v_column in v_key
