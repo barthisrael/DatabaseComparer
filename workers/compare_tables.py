@@ -414,7 +414,6 @@ def compare_tables(p_database_1=None, p_database_2=None, p_block_size=None, p_qu
             p_key=['table_schema', 'table_name'],
             p_sql=v_sql,
             p_inserted_callback=lambda p_columns, p_row, p_key: inserted_callback(p_queue=p_queue, p_columns=p_columns, p_row=p_row, p_key=p_key),
-            p_updated_callback=None,
             p_deleted_callback=lambda p_columns, p_row, p_key: deleted_callback(p_queue=p_queue, p_columns=p_columns, p_row=p_row, p_key=p_key)
         )
     finally:

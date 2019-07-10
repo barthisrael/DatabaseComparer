@@ -178,7 +178,7 @@ if __name__ == '__main__':
         v_result_list = []
         v_task_list = []
 
-        v_task_list += workers.compare_schemas.get_compare_schemas_tasks()
+        """v_task_list += workers.compare_schemas.get_compare_schemas_tasks()
         v_task_list += workers.compare_tables.get_compare_tables_tasks()
         v_task_list += workers.compare_tables_columns.get_compare_tables_columns_tasks()
         v_task_list += workers.compare_tables_pks.get_compare_tables_pks_tasks()
@@ -194,9 +194,17 @@ if __name__ == '__main__':
         v_task_list += workers.compare_mviews.get_compare_mviews_tasks()
         v_task_list += workers.compare_functions.get_compare_functions_tasks()
         v_task_list += workers.compare_trigger_functions.get_compare_trigger_functions_tasks()
-        v_task_list += workers.compare_procedures.get_compare_procedures_tasks()
+        v_task_list += workers.compare_procedures.get_compare_procedures_tasks()"""
 
         v_task_list += workers.compare_tables_data.get_compare_tables_data_tasks(
+            p_database_1=Spartacus.Database.PostgreSQL(
+                p_host=v_source_params[0],
+                p_port=v_source_params[1],
+                p_service=v_source_params[2],
+                p_user=v_source_params[3],
+                p_password=v_source_params[4],
+                p_application_name='compare_databases'
+            ),
             p_database_2=Spartacus.Database.PostgreSQL(
                 p_host=v_target_params[0],
                 p_port=v_target_params[1],
@@ -204,7 +212,8 @@ if __name__ == '__main__':
                 p_user=v_target_params[3],
                 p_password=v_target_params[4],
                 p_application_name='compare_databases'
-            )
+            ),
+            p_block_size=v_options.block_size
         )
 
         v_manager = multiprocessing.Manager()

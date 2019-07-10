@@ -4,7 +4,7 @@ import Spartacus.Database
 from .import custom_exceptions
 
 
-def compare_datatables(p_database_1=None, p_database_2=None, p_block_size=None, p_key=None, p_sql=None, p_inserted_callback=None, p_updated_callback=None, p_deleted_callback=None):
+def compare_datatables(p_database_1=None, p_database_2=None, p_block_size=None, p_key=None, p_sql=None, p_inserted_callback=None, p_updated_callback=None, p_deleted_callback=None, p_equal_callback=None):
     """Used to compare data between datatables. Such objects are fetched by blocks using given database connections and SQL query.
 
         Args:
@@ -38,6 +38,11 @@ def compare_datatables(p_database_1=None, p_database_2=None, p_block_size=None, 
                         p_columns (list): list of columns that are present in p_row parameter.
                         p_row (list): the row that was removed from database 2.
                         p_key (list): the key used for comparison.
+            p_equal_callback (function): the callback executed when a record exists in tha same way in both databases. Defaults to None.
+                Notes:
+                    p_columns (list): list of columns that are present in p_row parameter.
+                    p_row (list): the row that that matched.
+                    p_key (list): the key used for comparison.
 
         Raises:
             custom_exceptions.InvalidParameterTypeException.
@@ -70,6 +75,9 @@ def compare_datatables(p_database_1=None, p_database_2=None, p_block_size=None, 
 
     if p_deleted_callback is not None and not callable(p_deleted_callback):
         raise custom_exceptions.InvalidParameterTypeException('"p_deleted_callback" parameter must be a callable "function".', p_deleted_callback)
+
+    if p_equal_callback is not None and not callable(p_equal_callback):
+        raise custom_exceptions.InvalidParameterTypeException('"p_equal_callback" parameter must be a callable "function".', p_equal_callback)
 
     p_database_1.Open(p_autocommit=False)
     p_database_2.Open(p_autocommit=False)
@@ -124,7 +132,14 @@ def compare_datatables(p_database_1=None, p_database_2=None, p_block_size=None, 
                         })
                         v_all_match = False
 
-                if not v_all_match:
+                if v_all_match:
+                    if p_equal_callback is not None:
+                        p_equal_callback(
+                            v_table_2.Columns,
+                            v_row_2,
+                            v_key
+                        )
+                else:
                     if p_updated_callback is not None:
                         p_updated_callback(
                             v_table_1.Columns,
@@ -157,51 +172,44 @@ def compare_datatables(p_database_1=None, p_database_2=None, p_block_size=None, 
 
                 v_index_2 += 1
 
-        v_any_has_fetched_more = False
+        v_has_more_data_1 = not p_database_1.v_start
+        v_has_more_data_2 = not p_database_2.v_start
 
-        if v_index_1 == len(v_table_1.Rows):
-            v_has_more_data_1 = not p_database_1.v_start
+        if not v_has_more_data_1:
+            #Data fetch finished on first database, so let's insert remaining rows of table 2, if any
+            while v_index_2 < len(v_table_2.Rows):
+                v_row_2 = v_table_2.Rows[v_index_2]
 
-            if v_has_more_data_1:
-                v_table_1 = p_database_1.QueryBlock(p_sql=v_sql, p_blocksize=p_block_size)
-                v_index_1 = 0
-                v_any_has_fetched_more = True
+                if p_inserted_callback is not None:
+                    p_inserted_callback(
+                        v_table_2.Columns,
+                        v_row_2,
+                        v_key
+                    )
 
-        if v_index_2 == len(v_table_2.Rows):
-            v_has_more_data_2 = not p_database_2.v_start
+                v_index_2 += 1
 
-            if v_has_more_data_2:
-                v_table_2 = p_database_2.QueryBlock(p_sql=v_sql, p_blocksize=p_block_size)
-                v_index_2 = 0
-                v_any_has_fetched_more = True
+        if not v_has_more_data_2:
+            #Data fetch finished on second database, so let's insert remaining rows of table 1, if any
+            while v_index_1 < len(v_table_1.Rows):
+                v_row_1 = v_table_1.Rows[v_index_1]
 
-        if v_any_has_fetched_more:
-            continue
+                if p_deleted_callback is not None:
+                    p_deleted_callback(
+                        v_table_1.Columns,
+                        v_row_1,
+                        v_key
+                    )
 
-        #Data fetch finished, so let's insert remaining rows of each table, if any
-        while v_index_1 < len(v_table_1.Rows):
-            v_row_1 = v_table_1.Rows[v_index_1]
+                v_index_1 += 1
 
-            if p_deleted_callback is not None:
-                p_deleted_callback(
-                    v_table_1.Columns,
-                    v_row_1,
-                    v_key
-                )
+        if v_index_1 == len(v_table_1.Rows) and v_has_more_data_1:
+            v_table_1 = p_database_1.QueryBlock(p_sql=v_sql, p_blocksize=p_block_size)
+            v_index_1 = 0
 
-            v_index_1 += 1
-
-        while v_index_2 < len(v_table_2.Rows):
-            v_row_2 = v_table_2.Rows[v_index_2]
-
-            if p_inserted_callback is not None:
-                p_inserted_callback(
-                    v_table_2.Columns,
-                    v_row_2,
-                    v_key
-                )
-
-            v_index_2 += 1
+        if v_index_2 == len(v_table_2.Rows) and v_has_more_data_2:
+            v_table_2 = p_database_2.QueryBlock(p_sql=v_sql, p_blocksize=p_block_size)
+            v_index_2 = 0
 
     p_database_1.Close(p_commit=False)
     p_database_2.Close(p_commit=False)
