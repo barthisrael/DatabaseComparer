@@ -25,12 +25,10 @@ import workers.compare_trigger_functions
 import workers.compare_views
 
 
-def write_output(p_lock=None, p_output_database=None, p_type=None, p_row=None):
-    """Used to create a sheet when its first row is added.
+def get_output_sql(p_type=None, p_row=None):
+    """Get sql to insert in report table.
 
         Args:
-            p_lock (multiprocessing.managers.AcquirerProxy): lock to ensure atomic access to database object. Defaults to None.
-            p_output_database (Spartacus.Database.PostgreSQL): the output database. Defaults to None.
             p_type (str): the type of the row that will be inserted into output database. Defaults to None.
                 Notes: must be one of:
                     - functions
@@ -53,16 +51,13 @@ def write_output(p_lock=None, p_output_database=None, p_type=None, p_row=None):
                     - views
             p_row (dict): key/value pairs of values to be inserted into output database. Defaults to None.
 
+        Returns:
+            str: SQL to be executed.
+
         Raises:
             workers.custom_exceptions.InvalidParameterTypeException.
             workers.custom_exceptions.InvalidParameterValueException.
     """
-
-    if not isinstance(p_lock, multiprocessing.managers.AcquirerProxy):
-        raise workers.custom_exceptions.InvalidParameterTypeException('"p_lock" parameter must be a "multiprocessing.managers.AcquirerProxy" instance.', p_lock)
-
-    if not isinstance(p_output_database, Spartacus.Database.PostgreSQL):
-        raise workers.custom_exceptions.InvalidParameterTypeException('"p_output_database" parameter must be a "Spartacus.Database.PostgreSQL" instance.', p_output_database)
 
     if not isinstance(p_type, str):
         raise workers.custom_exceptions.InvalidParameterTypeException('"p_type" parameter must be a "str" instance.', p_type)
@@ -381,12 +376,65 @@ def write_output(p_lock=None, p_output_database=None, p_type=None, p_row=None):
             p_sql=p_row['sql']
         )
 
+    return v_sql
+
+
+def consumer_worker(p_output_database=None, p_block_size=None, p_queue=None, p_is_sending_data_array=None):
+    """Worker in charge of getting changes pointed by producer workers and insert such information into the output database.
+
+        Args:
+            p_output_database (Spartacus.Database.PostgreSQL): the output database. Defaults to None.
+            p_block_size (int): number of data records that the consumer will insert at a time. Defaults to None.
+            p_queue (multiprocessing.managers.BaseProxy): queue used to communicate to parent process. Created from a multiprocessing.Manager instance. Defaults to None.
+            p_is_sending_data_array (multiprocessing.managers.ArrayProxy): array used to control process that are still sending data. Defaults to None.
+
+        Raises:
+            custom_exceptions.InvalidParameterTypeException.
+            custom_exceptions.InvalidParameterValueException.
+    """
     try:
-        #Unique access to database object
-        p_lock.acquire()
-        p_output_database.Execute(p_sql=v_sql)
-    finally:
-        p_lock.release()
+        if not isinstance(p_output_database, Spartacus.Database.PostgreSQL):
+            raise workers.custom_exceptions.InvalidParameterTypeException('"p_output_database" parameter must be a "Spartacus.Database.PostgreSQL" instance.', p_output_database)
+
+        if not isinstance(p_block_size, int):
+            raise custom_exceptions.InvalidParameterTypeException('"p_block_size" parameter must be an "int" instance.', p_block_size)
+
+        if p_block_size < 1:
+            raise custom_exceptions.InvalidParameterValueException('"p_block_size" parameter must be a positive "int" instance.', p_block_size)
+
+        if not isinstance(p_queue, multiprocessing.managers.BaseProxy):
+            raise custom_exceptions.InvalidParameterTypeException('"p_queue" parameter must be a "multiprocessing.managers.BaseProxy" instance.', p_queue)
+
+        if not isinstance(p_is_sending_data_array, multiprocessing.managers.ArrayProxy):
+            raise custom_exceptions.InvalidParameterTypeException('"p_is_sending_data_array" parameter must be an "multiprocessing.managers.ArrayProxy" instance.', p_is_sending_data_array)
+
+        v_sql_list = []
+
+        p_output_database.Open(p_autocommit=True)
+
+        #While any task is still active or has data to be read, try to get data
+        #Used or because processes can be done but queue still have data or processes still executing and queue with no data
+        while any(p_is_sending_data_array) or p_queue.qsize() > 0:
+            v_data = p_queue.get()
+
+            if v_data is not None:
+                v_sql_list.append(
+                    get_output_sql(
+                        p_type=v_data['type'],
+                        p_row=v_data['row']
+                    )
+                )
+
+                if len(v_sql_list) == p_block_size:
+                    p_output_database.Execute(p_sql=';'.join(v_sql_list))
+                    v_sql_list = []
+
+        if len(v_sql_list) > 0:
+            p_output_database.Execute(p_sql=';'.join(v_sql_list))
+
+        p_output_database.Close(p_commit=True)
+    except Exception:
+        print('oh man, i am dead')
 
 
 if __name__ == '__main__':
@@ -405,7 +453,7 @@ if __name__ == '__main__':
             '-b',
             '--block-size',
             dest='block_size',
-            help='Number of data records that the comparer will deal with at the same time in each opened process. Used to reduce memory usage.',
+            help='Number of data records that the comparer will deal with at the same time in each opened process. Used to reduce memory usage. Also points number of records inserted at a time in the consumer workers.',
             type=int,
             required=True
         )
@@ -550,21 +598,23 @@ if __name__ == '__main__':
             '''
         )
 
-        #Open a process pool and create tasks to be run in parallel
-        v_process_pool = multiprocessing.Pool(multiprocessing.cpu_count())
-        v_result_list = []
-        v_task_list = []
+        v_output_database.Close(p_commit=True)
 
-        v_task_list += workers.compare_functions.get_compare_functions_tasks()
-        v_task_list += workers.compare_indexes.get_compare_indexes_tasks()
-        v_task_list += workers.compare_mviews.get_compare_mviews_tasks()
-        v_task_list += workers.compare_procedures.get_compare_procedures_tasks()
-        v_task_list += workers.compare_schemas.get_compare_schemas_tasks()
-        v_task_list += workers.compare_sequences.get_compare_sequences_tasks()
-        v_task_list += workers.compare_tables_checks.get_compare_tables_checks_tasks()
-        v_task_list += workers.compare_tables_columns.get_compare_tables_columns_tasks()
+        #Open a process pool for producers and create tasks to be run in parallel
+        v_producers_process_pool = multiprocessing.Pool(multiprocessing.cpu_count())
+        v_producers_result_list = []
+        v_producers_task_list = []
 
-        v_task_list += workers.compare_tables_data.get_compare_tables_data_tasks(
+        v_producers_task_list += workers.compare_functions.get_compare_functions_tasks()
+        v_producers_task_list += workers.compare_indexes.get_compare_indexes_tasks()
+        v_producers_task_list += workers.compare_mviews.get_compare_mviews_tasks()
+        v_producers_task_list += workers.compare_procedures.get_compare_procedures_tasks()
+        v_producers_task_list += workers.compare_schemas.get_compare_schemas_tasks()
+        v_producers_task_list += workers.compare_sequences.get_compare_sequences_tasks()
+        v_producers_task_list += workers.compare_tables_checks.get_compare_tables_checks_tasks()
+        v_producers_task_list += workers.compare_tables_columns.get_compare_tables_columns_tasks()
+
+        v_producers_task_list += workers.compare_tables_data.get_compare_tables_data_tasks(
             p_database_1=Spartacus.Database.PostgreSQL(
                 p_host=v_source_params[0],
                 p_port=v_source_params[1],
@@ -584,23 +634,46 @@ if __name__ == '__main__':
             p_block_size=v_options.block_size
         )
 
-        v_task_list += workers.compare_tables_excludes.get_compare_tables_excludes_tasks()
-        v_task_list += workers.compare_tables_fks.get_compare_tables_fks_tasks()
-        v_task_list += workers.compare_tables_pks.get_compare_tables_pks_tasks()
-        v_task_list += workers.compare_tables_rules.get_compare_tables_rules_tasks()
-        v_task_list += workers.compare_tables_triggers.get_compare_tables_triggers_tasks()
-        v_task_list += workers.compare_tables_uniques.get_compare_tables_uniques_tasks()
-        v_task_list += workers.compare_tables.get_compare_tables_tasks()
-        v_task_list += workers.compare_trigger_functions.get_compare_trigger_functions_tasks()
-        v_task_list += workers.compare_views.get_compare_views_tasks()
+        v_producers_task_list += workers.compare_tables_excludes.get_compare_tables_excludes_tasks()
+        v_producers_task_list += workers.compare_tables_fks.get_compare_tables_fks_tasks()
+        v_producers_task_list += workers.compare_tables_pks.get_compare_tables_pks_tasks()
+        v_producers_task_list += workers.compare_tables_rules.get_compare_tables_rules_tasks()
+        v_producers_task_list += workers.compare_tables_triggers.get_compare_tables_triggers_tasks()
+        v_producers_task_list += workers.compare_tables_uniques.get_compare_tables_uniques_tasks()
+        v_producers_task_list += workers.compare_tables.get_compare_tables_tasks()
+        v_producers_task_list += workers.compare_trigger_functions.get_compare_trigger_functions_tasks()
+        v_producers_task_list += workers.compare_views.get_compare_views_tasks()
 
         v_manager = multiprocessing.Manager()
         v_queue = v_manager.Queue()
-        v_lock = v_manager.Lock()
-        v_is_sending_data_array = v_manager.Array('b', [True] * len(v_task_list))
+        v_is_sending_data_array = v_manager.Array('b', [True] * len(v_producers_task_list))
 
-        for i in range(len(v_task_list)):
-            v_task = v_task_list[i]
+        #Open a process pool for consumers and create tasks to be run in parallel
+        v_consumers_process_pool = multiprocessing.Pool(multiprocessing.cpu_count())
+        v_consumers_result_list = []
+
+        for i in range(multiprocessing.cpu_count()):
+            v_consumers_result_list.append(
+                v_consumers_process_pool.apply_async(
+                    func=consumer_worker,
+                    kwds={
+                        'p_output_database': Spartacus.Database.PostgreSQL(
+                            p_host=v_output_params[0],
+                            p_port=v_output_params[1],
+                            p_service=v_output_params[2],
+                            p_user=v_output_params[3],
+                            p_password=v_output_params[4],
+                            p_application_name='compare_databases'
+                        ),
+                        'p_block_size': v_options.block_size,
+                        'p_queue': v_queue,
+                        'p_is_sending_data_array': v_is_sending_data_array
+                    }
+                )
+            )
+
+        for i in range(len(v_producers_task_list)):
+            v_task = v_producers_task_list[i]
 
             v_task['kwds']['p_database_1'] = Spartacus.Database.PostgreSQL(
                 p_host=v_source_params[0],
@@ -625,32 +698,35 @@ if __name__ == '__main__':
             v_task['kwds']['p_is_sending_data_array'] = v_is_sending_data_array
             v_task['kwds']['p_worker_index'] = i
 
-            v_result_list.append(
-                v_process_pool.apply_async(
+            v_producers_result_list.append(
+                v_producers_process_pool.apply_async(
                     func=v_task['function'],
                     kwds=v_task['kwds']
                 )
             )
 
-        #While any task is still active or has data to be read, try to get data
-        #Used or because processes can be done but queue still have data or processes still executing and queue with no data
-        while any(v_is_sending_data_array) or v_queue.qsize() > 0:
-            v_data = v_queue.get()
+        v_producers_process_pool.close()
+        v_producers_process_pool.join()
 
-            if v_data is not None:
-                write_output(p_lock=v_lock, p_output_database=v_output_database, p_type=v_data['type'], p_row=v_data['row'])
+        v_consumers_process_pool.close()
+        v_consumers_process_pool.join()
 
-        v_process_pool.close()
-        v_process_pool.join()
-
-        #Close output connection
-        v_output_database.Close(p_commit=True)
-
-        #If any exception in any task
-        if not all([v_result.successful() for v_result in v_result_list]):
+        #If any exception in any producer task
+        if not all([v_result.successful() for v_result in v_producers_result_list]):
             print('Some exception has occurred in the subprocesses. Please, check the exceptions below:')
 
-            for v_result in v_result_list:
+            for v_result in v_producers_result_list:
+                if not v_result.successful():
+                    try:
+                        v_result.get()
+                    except Exception:
+                        print(traceback.format_exc())
+
+        #If any exception in any consumer task
+        if not all([v_result.successful() for v_result in v_consumers_result_list]):
+            print('Some exception has occurred in the subprocesses. Please, check the exceptions below:')
+
+            for v_result in v_consumers_result_list:
                 if not v_result.successful():
                     try:
                         v_result.get()

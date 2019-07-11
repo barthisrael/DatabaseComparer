@@ -33,6 +33,12 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
         if not isinstance(p_database_2, Spartacus.Database.PostgreSQL):
             raise custom_exceptions.InvalidParameterTypeException('"p_database_2" parameter must be a "Spartacus.Database.PostgreSQL" instance.', p_database_2)
 
+        if not isinstance(p_block_size, int):
+            raise custom_exceptions.InvalidParameterTypeException('"p_block_size" parameter must be an "int" instance.', p_block_size)
+
+        if p_block_size < 1:
+            raise custom_exceptions.InvalidParameterValueException('"p_block_size" parameter must be a positive "int" instance.', p_block_size)
+
         if not isinstance(p_schema, str):
             raise custom_exceptions.InvalidParameterTypeException('"p_schema" parameter must be a "str" instance.', p_schema)
 
