@@ -392,49 +392,47 @@ def consumer_worker(p_output_database=None, p_block_size=None, p_queue=None, p_i
             custom_exceptions.InvalidParameterTypeException.
             custom_exceptions.InvalidParameterValueException.
     """
-    try:
-        if not isinstance(p_output_database, Spartacus.Database.PostgreSQL):
-            raise workers.custom_exceptions.InvalidParameterTypeException('"p_output_database" parameter must be a "Spartacus.Database.PostgreSQL" instance.', p_output_database)
 
-        if not isinstance(p_block_size, int):
-            raise custom_exceptions.InvalidParameterTypeException('"p_block_size" parameter must be an "int" instance.', p_block_size)
+    if not isinstance(p_output_database, Spartacus.Database.PostgreSQL):
+        raise workers.custom_exceptions.InvalidParameterTypeException('"p_output_database" parameter must be a "Spartacus.Database.PostgreSQL" instance.', p_output_database)
 
-        if p_block_size < 1:
-            raise custom_exceptions.InvalidParameterValueException('"p_block_size" parameter must be a positive "int" instance.', p_block_size)
+    if not isinstance(p_block_size, int):
+        raise custom_exceptions.InvalidParameterTypeException('"p_block_size" parameter must be an "int" instance.', p_block_size)
 
-        if not isinstance(p_queue, multiprocessing.managers.BaseProxy):
-            raise custom_exceptions.InvalidParameterTypeException('"p_queue" parameter must be a "multiprocessing.managers.BaseProxy" instance.', p_queue)
+    if p_block_size < 1:
+        raise custom_exceptions.InvalidParameterValueException('"p_block_size" parameter must be a positive "int" instance.', p_block_size)
 
-        if not isinstance(p_is_sending_data_array, multiprocessing.managers.ArrayProxy):
-            raise custom_exceptions.InvalidParameterTypeException('"p_is_sending_data_array" parameter must be an "multiprocessing.managers.ArrayProxy" instance.', p_is_sending_data_array)
+    if not isinstance(p_queue, multiprocessing.managers.BaseProxy):
+        raise custom_exceptions.InvalidParameterTypeException('"p_queue" parameter must be a "multiprocessing.managers.BaseProxy" instance.', p_queue)
 
-        v_sql_list = []
+    if not isinstance(p_is_sending_data_array, multiprocessing.managers.ArrayProxy):
+        raise custom_exceptions.InvalidParameterTypeException('"p_is_sending_data_array" parameter must be an "multiprocessing.managers.ArrayProxy" instance.', p_is_sending_data_array)
 
-        p_output_database.Open(p_autocommit=True)
+    v_sql_list = []
 
-        #While any task is still active or has data to be read, try to get data
-        #Used or because processes can be done but queue still have data or processes still executing and queue with no data
-        while any(p_is_sending_data_array) or p_queue.qsize() > 0:
-            v_data = p_queue.get()
+    p_output_database.Open(p_autocommit=True)
 
-            if v_data is not None:
-                v_sql_list.append(
-                    get_output_sql(
-                        p_type=v_data['type'],
-                        p_row=v_data['row']
-                    )
+    #While any task is still active or has data to be read, try to get data
+    #Used or because processes can be done but queue still have data or processes still executing and queue with no data
+    while any(p_is_sending_data_array) or p_queue.qsize() > 0:
+        v_data = p_queue.get()
+
+        if v_data is not None:
+            v_sql_list.append(
+                get_output_sql(
+                    p_type=v_data['type'],
+                    p_row=v_data['row']
                 )
+            )
 
-                if len(v_sql_list) == p_block_size:
-                    p_output_database.Execute(p_sql=';'.join(v_sql_list))
-                    v_sql_list = []
+            if len(v_sql_list) == p_block_size:
+                p_output_database.Execute(p_sql=';'.join(v_sql_list))
+                v_sql_list = []
 
-        if len(v_sql_list) > 0:
-            p_output_database.Execute(p_sql=';'.join(v_sql_list))
+    if len(v_sql_list) > 0:
+        p_output_database.Execute(p_sql=';'.join(v_sql_list))
 
-        p_output_database.Close(p_commit=True)
-    except Exception:
-        print('oh man, i am dead')
+    p_output_database.Close(p_commit=True)
 
 
 if __name__ == '__main__':
