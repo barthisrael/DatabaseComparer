@@ -278,6 +278,44 @@ def compare_tables_columns(p_database_1=None, p_database_2=None, p_block_size=No
             ORDER BY QUOTE_IDENT(s.nspname), QUOTE_IDENT(c.relname), QUOTE_IDENT(a.attname)
         '''
 
+        v_table_list = []
+
+        utils.compare_datatables(
+            p_database_1=p_database_1,
+            p_database_2=p_database_2,
+            p_block_size=p_block_size,
+            p_key=['table_schema', 'table_name'],
+            p_sql='''
+                SELECT x.table_schema,
+                       x.table_name
+                FROM (
+                    {p_sql}
+                ) x
+            '''.format(
+                p_sql=v_sql
+            ),
+            p_equal_callback=lambda p_columns, p_row, p_key: v_table_list.append({'schema': p_row['table_schema'], 'table': p_row['table_name']})
+        )
+
+        v_sql = '''
+            SELECT x.*
+            FROM (
+                {p_sql}
+            ) x
+            WHERE (x.table_schema, x.table_name) IN (
+                {p_values}
+            )
+        '''.format(
+            p_sql=v_sql,
+            p_values=','.join([
+                "('{p_schema}', '{p_table}')".format(
+                    p_schema=v_table['schema'],
+                    p_table=v_table['table']
+                )
+                for v_table in v_table_list
+            ])
+        )
+
         utils.compare_datatables(
             p_database_1=p_database_1,
             p_database_2=p_database_2,
