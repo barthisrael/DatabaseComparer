@@ -34,14 +34,12 @@ def inserted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'procedures',
-        'row': [
-            p_row['procedure_schema'],
-            p_row['procedure_id'],
-            ','.join(p_key),
-            'INSERTED',
-            '',
-            inspect.cleandoc(doc=p_row['create_procedure_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['procedure_schema'],
+            'function_id': p_row['procedure_id'],
+            'status': 'INSERTED',
+            'sql': inspect.cleandoc(doc=p_row['create_procedure_ddl'])
+        }
     })
 
 
@@ -87,14 +85,12 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
         if v_diff['column'] == 'procedure_definition':
             p_queue.put({
                 'type': 'procedures',
-                'row': [
-                    p_row_2['procedure_schema'],
-                    p_row_2['procedure_id'],
-                    ','.join(p_key),
-                    'UPDATED',
-                    v_diff['column'],
-                    inspect.cleandoc(doc=p_row['create_procedure_ddl'])
-                ]
+                'row': {
+                    'schema_name': p_row_2['procedure_schema'],
+                    'function_id': p_row_2['procedure_id'],
+                    'status': 'UPDATED',
+                    'sql': inspect.cleandoc(doc=p_row['create_procedure_ddl'])
+                }
             })
 
 
@@ -125,14 +121,12 @@ def deleted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'procedures',
-        'row': [
-            p_row['procedure_schema'],
-            p_row['procedure_id'],
-            ','.join(p_key),
-            'DELETED',
-            '',
-            inspect.cleandoc(doc=p_row['drop_procedure_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['procedure_schema'],
+            'function_id': p_row['procedure_id'],
+            'status': 'DELETED',
+            'sql': inspect.cleandoc(doc=p_row['drop_procedure_ddl'])
+        }
     })
 
 

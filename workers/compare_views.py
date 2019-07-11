@@ -34,14 +34,12 @@ def inserted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'views',
-        'row': [
-            p_row['view_schema'],
-            p_row['view_name'],
-            ','.join(p_key),
-            'INSERTED',
-            '',
-            inspect.cleandoc(doc=p_row['create_view_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['view_schema'],
+            'view_name': p_row['view_name'],
+            'status': 'INSERTED',
+            'sql': inspect.cleandoc(doc=p_row['create_view_ddl'])
+        }
     })
 
 
@@ -87,14 +85,12 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
         if v_diff['column'] == 'view_definition':
             p_queue.put({
                 'type': 'views',
-                'row': [
-                    p_row_2['view_schema'],
-                    p_row_2['view_name'],
-                    ','.join(p_key),
-                    'UPDATED',
-                    v_diff['column'],
-                    inspect.cleandoc(doc=p_row['create_view_ddl'])
-                ]
+                'row': {
+                    'schema_name': p_row_2['view_schema'],
+                    'view_name': p_row_2['view_name'],
+                    'status': 'UPDATED',
+                    'sql': inspect.cleandoc(doc=p_row['create_view_ddl'])
+                }
             })
 
 
@@ -125,14 +121,12 @@ def deleted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'views',
-        'row': [
-            p_row['view_schema'],
-            p_row['view_name'],
-            ','.join(p_key),
-            'DELETED',
-            '',
-            inspect.cleandoc(doc=p_row['drop_view_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['view_schema'],
+            'view_name': p_row['view_name'],
+            'status': 'DELETED',
+            'sql': inspect.cleandoc(doc=p_row['drop_view_ddl'])
+        }
     })
 
 

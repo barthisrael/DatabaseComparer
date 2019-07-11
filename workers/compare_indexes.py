@@ -34,14 +34,12 @@ def inserted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'indexes',
-        'row': [
-            p_row['index_namespace'],
-            p_row['index_name'],
-            ','.join(p_key),
-            'INSERTED',
-            '',
-            inspect.cleandoc(doc=p_row['create_index_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['index_namespace'],
+            'index_name': p_row['index_name'],
+            'status': 'INSERTED',
+            'sql': inspect.cleandoc(doc=p_row['create_index_ddl'])
+        }
     })
 
 
@@ -85,13 +83,11 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
 
     p_queue.put({
         'type': 'indexes',
-        'row': [
-            p_row_2['index_namespace'],
-            p_row_2['index_name'],
-            ','.join(p_key),
-            'UPDATED',
-            ','.join(v_diff['column'] for v_diff in p_all_diffs),
-            inspect.cleandoc(
+        'row': {
+            'schema_name': p_row_2['index_namespace'],
+            'index_name': p_row_2['index_name'],
+            'status': 'UPDATED',
+            'sql': inspect.cleandoc(
                 doc='''\
                     {p_drop}
                     {p_add}
@@ -100,7 +96,7 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
                     p_add=p_row_2['create_index_ddl']
                 )
             )
-        ]
+        }
     })
 
 
@@ -131,14 +127,12 @@ def deleted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'indexes',
-        'row': [
-            p_row['index_namespace'],
-            p_row['index_name'],
-            ','.join(p_key),
-            'DELETED',
-            '',
-            inspect.cleandoc(doc=p_row['drop_index_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['index_namespace'],
+            'index_name': p_row['index_name'],
+            'status': 'DELETED',
+            'sql': inspect.cleandoc(doc=p_row['drop_index_ddl'])
+        }
     })
 
 

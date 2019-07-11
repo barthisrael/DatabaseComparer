@@ -165,13 +165,11 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                     if not v_all_match:
                         p_queue.put({
                             'type': 'tables_data',
-                            'row': [
-                                p_schema,
-                                p_table,
-                                v_record_1_pk,
-                                'UPDATED',
-                                ','.join([v_diff['column'] for v_diff in v_all_diffs]),
-                                inspect.cleandoc(
+                            'row': {
+                                'schema_name': p_schema,
+                                'table_name': p_table,
+                                'status': 'UPDATED',
+                                'sql': inspect.cleandoc(
                                     doc='''\
                                         UPDATE {p_schema}.{p_table}
                                         SET {p_set}
@@ -197,7 +195,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                         ])
                                     )
                                 )
-                            ]
+                            }
                         })
 
                     v_index_1 += 1
@@ -206,13 +204,11 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                 elif v_record_1_pk < v_record_2_pk:
                     p_queue.put({
                         'type': 'tables_data',
-                        'row': [
-                            p_schema,
-                            p_table,
-                            v_record_1_pk,
-                            'DELETED',
-                            '',
-                            inspect.cleandoc(
+                        'row': {
+                            'schema_name': p_schema,
+                            'table_name': p_table,
+                            'status': 'DELETED',
+                            'sql': inspect.cleandoc(
                                 doc='''\
                                     DELETE
                                     FROM {p_schema}.{p_table}
@@ -230,7 +226,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                     ])
                                 )
                             )
-                        ]
+                        }
                     })
 
                     v_index_1 += 1
@@ -238,13 +234,11 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                 else:
                     p_queue.put({
                         'type': 'tables_data',
-                        'row': [
-                            p_schema,
-                            p_table,
-                            v_record_2_pk,
-                            'INSERTED',
-                            '',
-                            inspect.cleandoc(
+                        'row': {
+                            'schema_name': p_schema,
+                            'table_name': p_table,
+                            'status': 'INSERTED',
+                            'sql': inspect.cleandoc(
                                 doc='''\
                                     INSERT INTO {p_schema}.{p_table} (
                                         {p_columns}
@@ -264,7 +258,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                     ])
                                 )
                             )
-                        ]
+                        }
                     })
 
                     v_index_2 += 1
@@ -277,22 +271,13 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                 while v_index_2 < len(v_table_2.Rows):
                     v_row_2 = v_table_2.Rows[v_index_2]
 
-                    v_record_2_pk = '_'.join(
-                        [
-                            str(v_row_2[v_column])
-                            for v_column in v_key
-                        ]
-                    )
-
                     p_queue.put({
                         'type': 'tables_data',
-                        'row': [
-                            p_schema,
-                            p_table,
-                            v_record_2_pk,
-                            'INSERTED',
-                            '',
-                            inspect.cleandoc(
+                        'row': {
+                            'schema_name': p_schema,
+                            'table_name': p_table,
+                            'status': 'INSERTED',
+                            'sql': inspect.cleandoc(
                                 doc='''\
                                     INSERT INTO {p_schema}.{p_table} (
                                         {p_columns}
@@ -312,7 +297,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                     ])
                                 )
                             )
-                        ]
+                        }
                     })
 
                     v_index_2 += 1
@@ -322,22 +307,13 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                 while v_index_1 < len(v_table_1.Rows):
                     v_row_1 = v_table_1.Rows[v_index_1]
 
-                    v_record_1_pk = '_'.join(
-                        [
-                            str(v_row_1[v_column])
-                            for v_column in v_key
-                        ]
-                    )
-
                     p_queue.put({
                         'type': 'tables_data',
-                        'row': [
-                            p_schema,
-                            p_table,
-                            v_record_1_pk,
-                            'DELETED',
-                            '',
-                            inspect.cleandoc(
+                        'row': {
+                            'schema_name': p_schema,
+                            'table_name': p_table,
+                            'status': 'DELETED',
+                            'sql': inspect.cleandoc(
                                 doc='''\
                                     DELETE
                                     FROM {p_schema}.{p_table}
@@ -355,7 +331,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                     ])
                                 )
                             )
-                        ]
+                        }
                     })
 
                     v_index_1 += 1

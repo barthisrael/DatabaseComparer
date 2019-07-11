@@ -34,14 +34,12 @@ def inserted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'trigger_functions',
-        'row': [
-            p_row['trigger_function_schema'],
-            p_row['trigger_function_id'],
-            ','.join(p_key),
-            'INSERTED',
-            '',
-            inspect.cleandoc(doc=p_row['create_trigger_function_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['trigger_function_schema'],
+            'function_id': p_row['trigger_function_id'],
+            'status': 'INSERTED',
+            'sql': inspect.cleandoc(doc=p_row['create_trigger_function_ddl'])
+        }
     })
 
 
@@ -87,14 +85,12 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
         if v_diff['column'] == 'trigger_function_definition':
             p_queue.put({
                 'type': 'trigger_functions',
-                'row': [
-                    p_row_2['trigger_function_schema'],
-                    p_row_2['trigger_function_id'],
-                    ','.join(p_key),
-                    'UPDATED',
-                    v_diff['column'],
-                    inspect.cleandoc(doc=p_row['create_trigger_function_ddl'])
-                ]
+                'row': {
+                    'schema_name': p_row_2['trigger_function_schema'],
+                    'function_id': p_row_2['trigger_function_id'],
+                    'status': 'UPDATED',
+                    'sql': inspect.cleandoc(doc=p_row['create_trigger_function_ddl'])
+                }
             })
 
 
@@ -125,14 +121,12 @@ def deleted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'trigger_functions',
-        'row': [
-            p_row['trigger_function_schema'],
-            p_row['trigger_function_id'],
-            ','.join(p_key),
-            'DELETED',
-            '',
-            inspect.cleandoc(doc=p_row['drop_trigger_function_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['trigger_function_schema'],
+            'function_id': p_row['trigger_function_id'],
+            'status': 'DELETED',
+            'sql': inspect.cleandoc(doc=p_row['drop_trigger_function_ddl'])
+        }
     })
 
 

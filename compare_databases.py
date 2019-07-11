@@ -2,118 +2,391 @@ import traceback
 import argparse
 import inspect
 import Spartacus.Database
-import openpyxl
 import multiprocessing
 
 import workers.custom_exceptions
-import workers.compare_schemas
-import workers.compare_tables
-import workers.compare_tables_columns
-import workers.compare_tables_pks
-import workers.compare_tables_fks
-import workers.compare_tables_uniques
-import workers.compare_tables_checks
-import workers.compare_tables_excludes
+import workers.compare_functions
 import workers.compare_indexes
+import workers.compare_mviews
+import workers.compare_procedures
+import workers.compare_schemas
+import workers.compare_sequences
+import workers.compare_tables_checks
+import workers.compare_tables_columns
+import workers.compare_tables_data
+import workers.compare_tables_excludes
+import workers.compare_tables_fks
+import workers.compare_tables_pks
 import workers.compare_tables_rules
 import workers.compare_tables_triggers
-import workers.compare_sequences
-import workers.compare_views
-import workers.compare_mviews
-import workers.compare_functions
+import workers.compare_tables_uniques
+import workers.compare_tables
 import workers.compare_trigger_functions
-import workers.compare_procedures
-import workers.compare_tables_data
+import workers.compare_views
 
 
-def create_sheet(p_worksheet_dict=None, p_workbook=None, p_sheet_key=None):
+def write_output(p_lock=None, p_output_database=None, p_type=None, p_row=None):
     """Used to create a sheet when its first row is added.
 
         Args:
-            p_worksheet_dict (dict): dict containing all sheets that were already created. Defaults to None.
-            p_workbook (openpyxl.workbook.workbook.Workbook): the workbook where sheet will be created. Defaults to None.
-            p_sheet_key (str): the key of the sheet that is being created. Defaults to None.
+            p_lock (multiprocessing.managers.AcquirerProxy): lock to ensure atomic access to database object. Defaults to None.
+            p_output_database (Spartacus.Database.PostgreSQL): the output database. Defaults to None.
+            p_type (str): the type of the row that will be inserted into output database. Defaults to None.
                 Notes: must be one of:
-                    - schemas
-                    - tables
-                    - tables_columns
-                    - tables_pks
-                    - tables_fks
-                    - tables_uniques
-                    - tables_checks
-                    - tables_excludes
+                    - functions
                     - indexes
+                    - mviews
+                    - procedures
+                    - schemas
+                    - sequences
+                    - tables_checks
+                    - tables_columns
                     - tables_data
+                    - tables_excludes
+                    - tables_fks
+                    - tables_pks
                     - tables_rules
                     - tables_triggers
-                    - sequences
-                    - views
-                    - mviews
-                    - functions
+                    - tables_uniques
+                    - tables
                     - trigger_functions
-                    - procedures
+                    - views
+            p_row (dict): key/value pairs of values to be inserted into output database. Defaults to None.
 
         Raises:
             workers.custom_exceptions.InvalidParameterTypeException.
             workers.custom_exceptions.InvalidParameterValueException.
     """
 
-    if not isinstance(p_worksheet_dict, dict):
-        raise workers.custom_exceptions.InvalidParameterTypeException('"p_worksheet_dict" parameter must be a "dict" instance.', p_worksheet_dict)
+    if not isinstance(p_lock, multiprocessing.managers.AcquirerProxy):
+        raise workers.custom_exceptions.InvalidParameterTypeException('"p_lock" parameter must be a "multiprocessing.managers.AcquirerProxy" instance.', p_lock)
 
-    if not isinstance(p_workbook, openpyxl.workbook.workbook.Workbook):
-        raise workers.custom_exceptions.InvalidParameterTypeException('"p_workbook" parameter must be an "openpyxl.workbook.workbook.Workbook" instance.', p_workbook)
+    if not isinstance(p_output_database, Spartacus.Database.PostgreSQL):
+        raise workers.custom_exceptions.InvalidParameterTypeException('"p_output_database" parameter must be a "Spartacus.Database.PostgreSQL" instance.', p_output_database)
 
-    if not isinstance(p_sheet_key, str):
-        raise workers.custom_exceptions.InvalidParameterTypeException('"p_sheet_key" parameter must be a "str" instance.', p_sheet_key)
+    if not isinstance(p_type, str):
+        raise workers.custom_exceptions.InvalidParameterTypeException('"p_type" parameter must be a "str" instance.', p_type)
 
-    if p_sheet_key not in ['schemas', 'tables', 'tables_columns', 'tables_pks', 'tables_fks', 'tables_uniques', 'tables_checks', 'tables_excludes', 'indexes', 'tables_data', 'tables_rules', 'tables_triggers', 'sequences', 'views', 'mviews', 'functions', 'trigger_functions', 'procedures']:
+    if p_type not in ['functions', 'indexes', 'mviews', 'procedures', 'schemas', 'sequences', 'tables_checks', 'tables_columns', 'tables_data', 'tables_exludes', 'tables_fks', 'tables_pks', 'tables_rules', 'tables_triggers', 'tables_uniques', 'tables', 'trigger_functions', 'views']:
         raise workers.custom_exceptions.InvalidParameterValueException(
-            '"p_sheet_key" parameter must be one between: schemas, tables, tables_columns, tables_pks, tables_fks, tables_uniques, tables_checks, tables_excludes, indexes, tables_data, tables_rules, tables_triggers, sequences, views, mviews, functions, trigger_functions, procedures.',
-            p_sheet_key
+            '"p_type" parameter must be one between: functions, indexes, mviews, procedures, schemas, sequences, tables_checks, tables_columns, tables_data, tables_exludes, tables_fks, tables_pks, tables_rules, tables_triggers, tables_uniques, tables, trigger_functions, views.',
+            p_type
         )
 
-    if p_sheet_key not in p_worksheet_dict:
-        v_worksheet = p_workbook.create_sheet(p_sheet_key)
+    if not isinstance(p_row, dict):
+        raise workers.custom_exceptions.InvalidParameterTypeException('"p_row" parameter must be a "dict" instance.', p_row)
 
-        if p_sheet_key == 'schemas':
-            v_worksheet.append(['schema_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'tables':
-            v_worksheet.append(['schema_name', 'table_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'tables_columns':
-            v_worksheet.append(['schema_name', 'table_name', 'column_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'tables_pks':
-            v_worksheet.append(['schema_name', 'table_name', 'pk_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'tables_fks':
-            v_worksheet.append(['schema_name', 'table_name', 'fk_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'tables_uniques':
-            v_worksheet.append(['schema_name', 'table_name', 'unique_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'tables_checks':
-            v_worksheet.append(['schema_name', 'table_name', 'check_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'tables_exludes':
-            v_worksheet.append(['schema_name', 'table_name', 'exclude_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'indexes':
-            v_worksheet.append(['schema_name', 'index_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'tables_data':
-            v_worksheet.append(['schema_name', 'table_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'tables_rules':
-            v_worksheet.append(['schema_name', 'table_name', 'rule_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'tables_triggers':
-            v_worksheet.append(['schema_name', 'table_name', 'trigger_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'sequences':
-            v_worksheet.append(['schema_name', 'sequence_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'views':
-            v_worksheet.append(['schema_name', 'view_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'mviews':
-            v_worksheet.append(['schema_name', 'mview_name', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'functions':
-            v_worksheet.append(['schema_name', 'function_id', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'trigger_functions':
-            v_worksheet.append(['schema_name', 'trigger_function_id', 'key', 'status', 'diff', 'sql_to_fix'])
-        elif p_sheet_key == 'procedures':
-            v_worksheet.append(['schema_name', 'procedure_id', 'key', 'status', 'diff', 'sql_to_fix'])
+    v_sql = None
 
-        p_worksheet_dict[p_sheet_key] = v_worksheet
+    if p_type == 'functions':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_function_id := '{p_function_id}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_function_id=p_row['function_id'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'indexes':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_index_name := '{p_index_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_index_name=p_row['index_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'mviews':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_mview_name := '{p_mview_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_mview_name=p_row['mview_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'procedures':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_function_id := '{p_function_id}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_function_id=p_row['function_id'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'schemas':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'sequences':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_sequence_name := '{p_sequence_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_sequence_name=p_row['sequence_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'tables_checks':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_table_name := '{p_table_name}',
+                p_constraint_name := '{p_constraint_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_table_name=p_row['table_name'],
+            p_constraint_name=p_row['constraint_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'tables_columns':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_table_name := '{p_table_name}',
+                p_column_name := '{p_column_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_table_name=p_row['table_name'],
+            p_column_name=p_row['column_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'tables_data':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_table_name := '{p_table_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_table_name=p_row['table_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'tables_exludes':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_table_name := '{p_table_name}',
+                p_constraint_name := '{p_constraint_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_table_name=p_row['table_name'],
+            p_constraint_name=p_row['constraint_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'tables_fks':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_table_name := '{p_table_name}',
+                p_constraint_name := '{p_constraint_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_table_name=p_row['table_name'],
+            p_constraint_name=p_row['constraint_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'tables_pks':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_table_name := '{p_table_name}',
+                p_constraint_name := '{p_constraint_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_table_name=p_row['table_name'],
+            p_constraint_name=p_row['constraint_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'tables_rules':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_table_name := '{p_table_name}',
+                p_constraint_name := '{p_constraint_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_table_name=p_row['table_name'],
+            p_constraint_name=p_row['constraint_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'tables_triggers':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_table_name := '{p_table_name}',
+                p_trigger_name := '{p_trigger_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_table_name=p_row['table_name'],
+            p_trigger_name=p_row['trigger_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'tables_uniques':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_table_name := '{p_table_name}',
+                p_constraint_name := '{p_constraint_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_table_name=p_row['table_name'],
+            p_constraint_name=p_row['constraint_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'tables':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_table_name := '{p_table_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_table_name=p_row['table_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'trigger_functions':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_function_id := '{p_function_id}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_function_id=p_row['function_id'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+    elif p_type == 'views':
+        v_sql = '''
+            SELECT database_comparer_report.output_report_fnc_add (
+                p_category := '{p_category}',
+                p_schema_name := '{p_schema_name}',
+                p_view_name := '{p_view_name}',
+                p_status := '{p_status}',
+                p_sql := $output_report_sql${p_sql}$output_report_sql$
+            )
+        '''.format(
+            p_category=p_type,
+            p_schema_name=p_row['schema_name'],
+            p_view_name=p_row['view_name'],
+            p_status=p_row['status'],
+            p_sql=p_row['sql']
+        )
+
+    try:
+        #Unique access to database object
+        p_lock.acquire()
+        p_output_database.Execute(p_sql=v_sql)
+    finally:
+        p_lock.release()
 
 
 if __name__ == '__main__':
@@ -122,18 +395,10 @@ if __name__ == '__main__':
             epilog=inspect.cleandoc(
                 doc='''\
                     Script used to compare databases and find the differences between them, if any.
-                    Found differences will be written to a given output xlsx file.
+                    Found differences will be written to a given report database connection, in the table "database_comparer_report.output_report".
+                    The differences considers commands to get in target from source database.
                 '''
             )
-        )
-
-        v_parser.add_argument(
-            '-o',
-            '--output-file',
-            dest='output_file',
-            help='Full path to the output file. Must have .xlsx extension.',
-            type=str,
-            required=True
         )
 
         v_parser.add_argument(
@@ -149,7 +414,7 @@ if __name__ == '__main__':
             '-s',
             '--source-database-connection',
             dest='source_database_connection',
-            help='Connection string to the source database. Has the following structure: HOST:PORT:DATABASE:USER:PASSWORD. You can leave password empty if it is already in you .pgpass file.',
+            help='Connection string to the source database of comparison. Has the following structure: HOST:PORT:DATABASE:USER:PASSWORD. You can leave password empty if it is already in you .pgpass file.',
             type=str,
             required=True
         )
@@ -158,7 +423,16 @@ if __name__ == '__main__':
             '-t',
             '--target-database-connection',
             dest='target_database_connection',
-            help='Connection string to the target database. Has the following structure: HOST:PORT:DATABASE:USER:PASSWORD. You can leave password empty if it is already in you .pgpass file.',
+            help='Connection string to the target database of comparison. Has the following structure: HOST:PORT:DATABASE:USER:PASSWORD. You can leave password empty if it is already in you .pgpass file.',
+            type=str,
+            required=True
+        )
+
+        v_parser.add_argument(
+            '-o',
+            '--output-database-connection',
+            dest='output_database_connection',
+            help='Connection string to the report database. Has the following structure: HOST:PORT:DATABASE:USER:PASSWORD. You can leave password empty if it is already in you .pgpass file.',
             type=str,
             required=True
         )
@@ -168,33 +442,127 @@ if __name__ == '__main__':
         #Get databases credentials
         v_source_params = v_options.source_database_connection.split(':')
         v_target_params = v_options.target_database_connection.split(':')
+        v_output_params = v_options.output_database_connection.split(':')
 
-        #Create output file and corresponding sheets
-        v_output_workbook = openpyxl.Workbook(write_only=True)
-        v_output_worksheet_dict = {}
+        v_output_database = Spartacus.Database.PostgreSQL(
+            p_host=v_output_params[0],
+            p_port=v_output_params[1],
+            p_service=v_output_params[2],
+            p_user=v_output_params[3],
+            p_password=v_output_params[4],
+            p_application_name='compare_databases'
+        )
+
+        #Open output database and create output structure
+        v_output_database.Open(p_autocommit=True)
+
+        v_output_database.Execute(
+            p_sql='''
+                CREATE SCHEMA IF NOT EXISTS database_comparer_report;
+            '''
+        )
+
+        v_output_database.Execute(
+            p_sql='''
+                CREATE TABLE IF NOT EXISTS database_comparer_report.output_report (
+                    id SERIAL NOT NULL PRIMARY KEY,
+                    category TEXT NOT NULL,
+                    schema_name TEXT,
+                    table_name TEXT,
+                    column_name TEXT,
+                    constraint_name TEXT,
+                    trigger_name TEXT,
+                    index_name TEXT,
+                    sequence_name TEXT,
+                    view_name TEXT,
+                    mview_name TEXT,
+                    function_id TEXT,
+                    status TEXT,
+                    sql TEXT
+                );
+            '''
+        )
+
+        v_output_database.Execute(
+            p_sql='''
+                TRUNCATE database_comparer_report.output_report
+            '''
+        )
+
+        v_output_database.Execute(
+            p_sql='''
+                CREATE OR REPLACE FUNCTION database_comparer_report.output_report_fnc_add (
+                    p_category TEXT DEFAULT NULL::TEXT,
+                    p_schema_name TEXT DEFAULT NULL::TEXT,
+                    p_table_name TEXT DEFAULT NULL::TEXT,
+                    p_column_name TEXT DEFAULT NULL::TEXT,
+                    p_constraint_name TEXT DEFAULT NULL::TEXT,
+                    p_trigger_name TEXT DEFAULT NULL::TEXT,
+                    p_index_name TEXT DEFAULT NULL::TEXT,
+                    p_sequence_name TEXT DEFAULT NULL::TEXT,
+                    p_view_name TEXT DEFAULT NULL::TEXT,
+                    p_mview_name TEXT DEFAULT NULL::TEXT,
+                    p_function_id TEXT DEFAULT NULL::TEXT,
+                    p_status TEXT DEFAULT NULL::TEXT,
+                    p_sql TEXT DEFAULT NULL::TEXT
+                )
+                RETURNS INTEGER
+                LANGUAGE plpgsql
+                AS
+                $function$
+                DECLARE
+                    v_id INTEGER;
+                BEGIN
+                    INSERT INTO database_comparer_report.output_report (
+                        category,
+                        schema_name,
+                        table_name,
+                        column_name,
+                        constraint_name,
+                        trigger_name,
+                        index_name,
+                        sequence_name,
+                        view_name,
+                        mview_name,
+                        function_id,
+                        status,
+                        sql
+                    ) VALUES (
+                        p_category,
+                        p_schema_name,
+                        p_table_name,
+                        p_column_name,
+                        p_constraint_name,
+                        p_trigger_name,
+                        p_index_name,
+                        p_sequence_name,
+                        p_view_name,
+                        p_mview_name,
+                        p_function_id,
+                        p_status,
+                        p_sql
+                    )
+                    RETURNING id INTO v_id;
+
+                    RETURN v_id;
+                END;
+                $function$
+            '''
+        )
 
         #Open a process pool and create tasks to be run in parallel
         v_process_pool = multiprocessing.Pool(multiprocessing.cpu_count())
         v_result_list = []
         v_task_list = []
 
-        v_task_list += workers.compare_schemas.get_compare_schemas_tasks()
-        v_task_list += workers.compare_tables.get_compare_tables_tasks()
-        v_task_list += workers.compare_tables_columns.get_compare_tables_columns_tasks()
-        v_task_list += workers.compare_tables_pks.get_compare_tables_pks_tasks()
-        v_task_list += workers.compare_tables_fks.get_compare_tables_fks_tasks()
-        v_task_list += workers.compare_tables_uniques.get_compare_tables_uniques_tasks()
-        v_task_list += workers.compare_tables_checks.get_compare_tables_checks_tasks()
-        v_task_list += workers.compare_tables_excludes.get_compare_tables_excludes_tasks()
-        v_task_list += workers.compare_indexes.get_compare_indexes_tasks()
-        v_task_list += workers.compare_tables_rules.get_compare_tables_rules_tasks()
-        v_task_list += workers.compare_tables_triggers.get_compare_tables_triggers_tasks()
-        v_task_list += workers.compare_sequences.get_compare_sequences_tasks()
-        v_task_list += workers.compare_views.get_compare_views_tasks()
-        v_task_list += workers.compare_mviews.get_compare_mviews_tasks()
         v_task_list += workers.compare_functions.get_compare_functions_tasks()
-        v_task_list += workers.compare_trigger_functions.get_compare_trigger_functions_tasks()
+        v_task_list += workers.compare_indexes.get_compare_indexes_tasks()
+        v_task_list += workers.compare_mviews.get_compare_mviews_tasks()
         v_task_list += workers.compare_procedures.get_compare_procedures_tasks()
+        v_task_list += workers.compare_schemas.get_compare_schemas_tasks()
+        v_task_list += workers.compare_sequences.get_compare_sequences_tasks()
+        v_task_list += workers.compare_tables_checks.get_compare_tables_checks_tasks()
+        v_task_list += workers.compare_tables_columns.get_compare_tables_columns_tasks()
 
         v_task_list += workers.compare_tables_data.get_compare_tables_data_tasks(
             p_database_1=Spartacus.Database.PostgreSQL(
@@ -216,8 +584,19 @@ if __name__ == '__main__':
             p_block_size=v_options.block_size
         )
 
+        v_task_list += workers.compare_tables_excludes.get_compare_tables_excludes_tasks()
+        v_task_list += workers.compare_tables_fks.get_compare_tables_fks_tasks()
+        v_task_list += workers.compare_tables_pks.get_compare_tables_pks_tasks()
+        v_task_list += workers.compare_tables_rules.get_compare_tables_rules_tasks()
+        v_task_list += workers.compare_tables_triggers.get_compare_tables_triggers_tasks()
+        v_task_list += workers.compare_tables_uniques.get_compare_tables_uniques_tasks()
+        v_task_list += workers.compare_tables.get_compare_tables_tasks()
+        v_task_list += workers.compare_trigger_functions.get_compare_trigger_functions_tasks()
+        v_task_list += workers.compare_views.get_compare_views_tasks()
+
         v_manager = multiprocessing.Manager()
         v_queue = v_manager.Queue()
+        v_lock = v_manager.Lock()
         v_is_sending_data_array = v_manager.Array('b', [True] * len(v_task_list))
 
         for i in range(len(v_task_list)):
@@ -253,21 +632,19 @@ if __name__ == '__main__':
                 )
             )
 
-        #While any task is still active, try to get data
-        while any(v_is_sending_data_array):
+        #While any task is still active or has data to be read, try to get data
+        #Used or because processes can be done but queue still have data or processes still executing and queue with no data
+        while any(v_is_sending_data_array) or v_queue.qsize() > 0:
             v_data = v_queue.get()
 
             if v_data is not None:
-                if v_data['type'] not in v_output_worksheet_dict:
-                    create_sheet(p_worksheet_dict=v_output_worksheet_dict, p_workbook=v_output_workbook, p_sheet_key=v_data['type'])
-
-                v_output_worksheet_dict[v_data['type']].append(v_data['row'])
+                write_output(p_lock=v_lock, p_output_database=v_output_database, p_type=v_data['type'], p_row=v_data['row'])
 
         v_process_pool.close()
         v_process_pool.join()
 
-        #Write output file
-        v_output_workbook.save(v_options.output_file)
+        #Close output connection
+        v_output_database.Close(p_commit=True)
 
         #If any exception in any task
         if not all([v_result.successful() for v_result in v_result_list]):

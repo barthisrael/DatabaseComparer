@@ -34,14 +34,12 @@ def inserted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'sequences',
-        'row': [
-            p_row['sequence_schema'],
-            p_row['sequence_name'],
-            ','.join(p_key),
-            'INSERTED',
-            '',
-            inspect.cleandoc(doc=p_row['create_sequence_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['sequence_schema'],
+            'sequence_name': p_row['sequence_name'],
+            'status': 'INSERTED',
+            'sql': inspect.cleandoc(doc=p_row['create_sequence_ddl'])
+        }
     })
 
 
@@ -87,13 +85,11 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
         if v_diff['column'] == 'start_value':
             p_queue.put({
                 'type': 'sequences',
-                'row': [
-                    p_row_2['sequence_schema'],
-                    p_row_2['sequence_name'],
-                    ','.join(p_key),
-                    'UPDATED',
-                    v_diff['column'],
-                    inspect.cleandoc(
+                'row': {
+                    'schema_name': p_row_2['sequence_schema'],
+                    'sequence_name': p_row_2['sequence_name'],
+                    'status': 'UPDATED',
+                    'sql': inspect.cleandoc(
                         doc='''\
                             ALTER SEQUENCE {p_schema}.{p_sequence}
                             START WITH {p_start};
@@ -103,18 +99,16 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
                             p_start=p_row_2['start_value']
                         )
                     )
-                ]
+                }
             })
         elif v_diff['column'] == 'minimum_value':
             p_queue.put({
                 'type': 'sequences',
-                'row': [
-                    p_row_2['sequence_schema'],
-                    p_row_2['sequence_name'],
-                    ','.join(p_key),
-                    'UPDATED',
-                    v_diff['column'],
-                    inspect.cleandoc(
+                'row': {
+                    'schema_name': p_row_2['sequence_schema'],
+                    'sequence_name': p_row_2['sequence_name'],
+                    'status': 'UPDATED',
+                    'sql': inspect.cleandoc(
                         doc='''\
                             ALTER SEQUENCE {p_schema}.{p_sequence}
                             MINVALUE {p_value};
@@ -124,18 +118,16 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
                             p_value=p_row_2['minimum_value']
                         )
                     )
-                ]
+                }
             })
         elif v_diff['column'] == 'maximum_value':
             p_queue.put({
                 'type': 'sequences',
-                'row': [
-                    p_row_2['sequence_schema'],
-                    p_row_2['sequence_name'],
-                    ','.join(p_key),
-                    'UPDATED',
-                    v_diff['column'],
-                    inspect.cleandoc(
+                'row': {
+                    'schema_name': p_row_2['sequence_schema'],
+                    'sequence_name': p_row_2['sequence_name'],
+                    'status': 'UPDATED',
+                    'sql': inspect.cleandoc(
                         doc='''\
                             ALTER SEQUENCE {p_schema}.{p_sequence}
                             MAXVALUE {p_value};
@@ -145,18 +137,16 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
                             p_value=p_row_2['maximum_value']
                         )
                     )
-                ]
+                }
             })
         elif v_diff['column'] == 'increment':
             p_queue.put({
                 'type': 'sequences',
-                'row': [
-                    p_row_2['sequence_schema'],
-                    p_row_2['sequence_name'],
-                    ','.join(p_key),
-                    'UPDATED',
-                    v_diff['column'],
-                    inspect.cleandoc(
+                'row': {
+                    'schema_name': p_row_2['sequence_schema'],
+                    'sequence_name': p_row_2['sequence_name'],
+                    'status': 'UPDATED',
+                    'sql': inspect.cleandoc(
                         doc='''\
                             ALTER SEQUENCE {p_schema}.{p_sequence}
                             INCREMENT BY {p_value};
@@ -166,18 +156,16 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
                             p_value=p_row_2['increment']
                         )
                     )
-                ]
+                }
             })
         elif v_diff['column'] == 'cycle_option':
             p_queue.put({
                 'type': 'sequences',
-                'row': [
-                    p_row_2['sequence_schema'],
-                    p_row_2['sequence_name'],
-                    ','.join(p_key),
-                    'UPDATED',
-                    v_diff['column'],
-                    inspect.cleandoc(
+                'row': {
+                    'schema_name': p_row_2['sequence_schema'],
+                    'sequence_name': p_row_2['sequence_name'],
+                    'status': 'UPDATED',
+                    'sql': inspect.cleandoc(
                         doc='''\
                             ALTER SEQUENCE {p_schema}.{p_sequence}
                             {p_option} CYCLE;
@@ -187,7 +175,7 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
                             p_option='' if p_row_2['cycle_option'] == 'YES' else 'NO'
                         )
                     )
-                ]
+                }
             })
 
 
@@ -218,14 +206,12 @@ def deleted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'sequences',
-        'row': [
-            p_row['sequence_schema'],
-            p_row['sequence_name'],
-            ','.join(p_key),
-            'DELETED',
-            '',
-            inspect.cleandoc(doc=p_row['drop_sequence_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['sequence_schema'],
+            'sequence_name': p_row['sequence_name'],
+            'status': 'DELETED',
+            'sql': inspect.cleandoc(doc=p_row['drop_sequence_ddl'])
+        }
     })
 
 

@@ -34,14 +34,12 @@ def inserted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'tables',
-        'row': [
-            p_row['table_schema'],
-            p_row['table_name'],
-            ','.join(p_key),
-            'INSERTED',
-            '',
-            inspect.cleandoc(doc=p_row['create_table_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['table_schema'],
+            'table_name': p_row['table_name'],
+            'status': 'INSERTED',
+            'sql': inspect.cleandoc(doc=p_row['create_table_ddl'])
+        }
     })
 
 
@@ -72,14 +70,12 @@ def deleted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'tables',
-        'row': [
-            p_row['table_schema'],
-            p_row['table_name'],
-            ','.join(p_key),
-            'DELETED',
-            '',
-            inspect.cleandoc(doc=p_row['drop_table_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['table_schema'],
+            'table_name': p_row['table_name'],
+            'status': 'DELETED',
+            'sql': inspect.cleandoc(doc=p_row['drop_table_ddl'])
+        }
     })
 
 

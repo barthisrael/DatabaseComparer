@@ -34,14 +34,12 @@ def inserted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'mviews',
-        'row': [
-            p_row['mview_schema'],
-            p_row['mview_name'],
-            ','.join(p_key),
-            'INSERTED',
-            '',
-            inspect.cleandoc(doc=p_row['create_mview_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['mview_schema'],
+            'mview_name': p_row['mview_name'],
+            'status': 'INSERTED',
+            'sql': inspect.cleandoc(doc=p_row['create_mview_ddl'])
+        }
     })
 
 
@@ -87,13 +85,11 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
         if v_diff['column'] == 'mview_definition':
             p_queue.put({
                 'type': 'mviews',
-                'row': [
-                    p_row_2['mview_schema'],
-                    p_row_2['mview_name'],
-                    ','.join(p_key),
-                    'UPDATED',
-                    v_diff['column'],
-                    inspect.cleandoc(
+                'row': {
+                    'schema_name': p_row_2['mview_schema'],
+                    'mview_name': p_row_2['mview_name'],
+                    'status': 'UPDATED',
+                    'sql': inspect.cleandoc(
                         doc='''
                             {p_drop}
                             {p_create}
@@ -102,7 +98,7 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
                             p_create=p_row['create_mview_ddl']
                         )
                     )
-                ]
+                }
             })
 
 
@@ -133,14 +129,12 @@ def deleted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'mviews',
-        'row': [
-            p_row['mview_schema'],
-            p_row['mview_name'],
-            ','.join(p_key),
-            'DELETED',
-            '',
-            inspect.cleandoc(doc=p_row['drop_mview_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['mview_schema'],
+            'mview_name': p_row['mview_name'],
+            'status': 'DELETED',
+            'sql': inspect.cleandoc(doc=p_row['drop_mview_ddl'])
+        }
     })
 
 

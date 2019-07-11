@@ -34,15 +34,13 @@ def inserted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'tables_rules',
-        'row': [
-            p_row['table_schema'],
-            p_row['table_name'],
-            p_row['rule_name'],
-            ','.join(p_key),
-            'INSERTED',
-            '',
-            inspect.cleandoc(doc=p_row['create_rule_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['table_schema'],
+            'table_name': p_row['table_name'],
+            'constraint_name': p_row['rule_name'],
+            'status': 'INSERTED',
+            'sql': inspect.cleandoc(doc=p_row['create_rule_ddl'])
+        }
     })
 
 
@@ -87,14 +85,12 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
     for v_diff in p_all_diffs:
         p_queue.put({
             'type': 'tables_rules',
-            'row': [
-                p_row_2['table_schema'],
-                p_row_2['table_name'],
-                p_row_2['rule_name'],
-                ','.join(p_key),
-                'UPDATED',
-                v_diff['column'],
-                inspect.cleandoc(
+            'row': {
+                'schema_name': p_row_2['table_schema'],
+                'table_name': p_row_2['table_name'],
+                'constraint_name': p_row_2['rule_name'],
+                'status': 'UPDATED',
+                'sql': inspect.cleandoc(
                     doc='''\
                         {p_drop}
                         {p_add}
@@ -103,7 +99,7 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
                         p_add=p_row_2['create_rule_ddl']
                     )
                 )
-            ]
+            }
         })
 
 
@@ -134,15 +130,13 @@ def deleted_callback(p_queue=None, p_columns=None, p_row=None, p_key=None):
 
     p_queue.put({
         'type': 'tables_rules',
-        'row': [
-            p_row['table_schema'],
-            p_row['table_name'],
-            p_row['rule_name'],
-            ','.join(p_key),
-            'DELETED',
-            '',
-            inspect.cleandoc(doc=p_row['drop_rule_ddl'])
-        ]
+        'row': {
+            'schema_name': p_row['table_schema'],
+            'table_name': p_row['table_name'],
+            'constraint_name': p_row['rule_name'],
+            'status': 'DELETED',
+            'sql': inspect.cleandoc(doc=p_row['drop_rule_ddl'])
+        }
     })
 
 
