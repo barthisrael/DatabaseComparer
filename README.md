@@ -13,7 +13,7 @@ Will also reduce memory using --block-size parameter. You can set it as you want
 
 In the example, will allow each subprocess query blocks of at most 500 registers in each database at a time.
 
-Comparison results containing DDL/DML commands to be applied in source database in order to become like target database are put in database_comparer_report.output_report table of the report connection.
+Comparison results containing DDL/DML commands to be applied in source database in order to become like target database are put in **database_comparer_report.output_report** table of the report connection.
 
 Support:
 
