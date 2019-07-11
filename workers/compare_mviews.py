@@ -94,8 +94,8 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
                             {p_drop}
                             {p_create}
                         '''.format(
-                            p_drop=p_row['drop_mview_ddl'],
-                            p_create=p_row['create_mview_ddl']
+                            p_drop=p_row_2['drop_mview_ddl'],
+                            p_create=p_row_2['create_mview_ddl']
                         )
                     )
                 }

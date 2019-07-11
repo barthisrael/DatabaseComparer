@@ -89,7 +89,7 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
                     'schema_name': p_row_2['function_schema'],
                     'function_id': p_row_2['function_id'],
                     'status': 'UPDATED',
-                    'sql': inspect.cleandoc(doc=p_row['create_function_ddl'])
+                    'sql': inspect.cleandoc(doc=p_row_2['create_function_ddl'])
                 }
             })
 
