@@ -204,11 +204,11 @@ def compare_datatables(p_database_1=None, p_database_2=None, p_block_size=None, 
                 v_index_1 += 1
 
         if v_index_1 == len(v_table_1.Rows) and v_has_more_data_1:
-            v_table_1 = p_database_1.QueryBlock(p_sql=v_sql, p_blocksize=p_block_size)
+            v_table_1 = p_database_1.QueryBlock(p_sql=p_sql, p_blocksize=p_block_size)
             v_index_1 = 0
 
         if v_index_2 == len(v_table_2.Rows) and v_has_more_data_2:
-            v_table_2 = p_database_2.QueryBlock(p_sql=v_sql, p_blocksize=p_block_size)
+            v_table_2 = p_database_2.QueryBlock(p_sql=p_sql, p_blocksize=p_block_size)
             v_index_2 = 0
 
     p_database_1.Close(p_commit=False)

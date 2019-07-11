@@ -3,6 +3,7 @@ import argparse
 import inspect
 import Spartacus.Database
 import multiprocessing
+import queue
 
 import workers.custom_exceptions
 import workers.compare_functions
@@ -415,7 +416,12 @@ def consumer_worker(p_output_database=None, p_block_size=None, p_queue=None, p_i
     #While any task is still active or has data to be read, try to get data
     #Used or because processes can be done but queue still have data or processes still executing and queue with no data
     while any(p_is_sending_data_array) or p_queue.qsize() > 0:
-        v_data = p_queue.get()
+        v_data = None
+
+        try:
+            v_data = p_queue.get_nowait()
+        except queue.Empty:
+            pass
 
         if v_data is not None:
             v_sql_list.append(
@@ -711,7 +717,7 @@ if __name__ == '__main__':
 
         #If any exception in any producer task
         if not all([v_result.successful() for v_result in v_producers_result_list]):
-            print('Some exception has occurred in the subprocesses. Please, check the exceptions below:')
+            print('Some exception has occurred in the comparer subprocesses. Please, check the exceptions below:')
 
             for v_result in v_producers_result_list:
                 if not v_result.successful():
@@ -722,7 +728,7 @@ if __name__ == '__main__':
 
         #If any exception in any consumer task
         if not all([v_result.successful() for v_result in v_consumers_result_list]):
-            print('Some exception has occurred in the subprocesses. Please, check the exceptions below:')
+            print('Some exception has occurred in the consumer subprocesses. Please, check the exceptions below:')
 
             for v_result in v_consumers_result_list:
                 if not v_result.successful():
