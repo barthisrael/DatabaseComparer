@@ -250,7 +250,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                         {p_columns}
                                     ) VALUES (
                                         {p_values}
-                                    )
+                                    );
                                 '''.format(
                                     p_schema=p_schema,
                                     p_table=p_table,
@@ -289,7 +289,7 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
                                         {p_columns}
                                     ) VALUES (
                                         {p_values}
-                                    )
+                                    );
                                 '''.format(
                                     p_schema=p_schema,
                                     p_table=p_table,
