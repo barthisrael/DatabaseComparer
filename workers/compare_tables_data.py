@@ -357,13 +357,14 @@ def compare_tables_data(p_database_1=None, p_database_2=None, p_block_size=None,
         p_is_sending_data_array[p_worker_index] = False
 
 
-def get_compare_tables_data_tasks(p_database_1=None, p_database_2=None, p_block_size=None):
+def get_compare_tables_data_tasks(p_database_1=None, p_database_2=None, p_block_size=None, p_exclude_tables=None):
     """Get list of tasks that will compare tables data between databases.
 
         Args:
             p_database_1 (Spartacus.Database.PostgreSQL): the first database. Defaults to None.
             p_database_2 (Spartacus.Database.PostgreSQL): the second database. Defaults to None.
             p_block_size (int): Number of data records that the comparer will deal with at the same time. Defaults to None.
+            p_exclude_tables (list): list of table to be excluded from tables data comparison process. Defaults to None.
 
         Returns:
             list: list of tasks to be executed in a process pool. Each item is a dict instance with following strucutre:
@@ -388,6 +389,9 @@ def get_compare_tables_data_tasks(p_database_1=None, p_database_2=None, p_block_
 
     if p_block_size < 1:
         raise custom_exceptions.InvalidParameterValueException('"p_block_size" parameter must be a positive "int" instance.', p_block_size)
+
+    if not isinstance(p_exclude_tables, list):
+        raise custom_exceptions.InvalidParameterTypeException('"p_exclude_tables" parameter must be a "list" instance.', p_exclude_tables)
 
     v_sql = '''
         WITH select_tables AS (
@@ -579,9 +583,29 @@ def get_compare_tables_data_tasks(p_database_1=None, p_database_2=None, p_block_
         INNER JOIN select_columns sc
                 ON st.table_schema = sc.table_schema
                AND st.table_name = sc.table_name
+        {p_filter}
         ORDER BY st.table_schema,
                  st.table_name
     '''
+
+    if len(p_exclude_tables) > 0:
+        v_sql = v_sql.format(
+            p_filter='''
+                WHERE (st.table_schema, st.table_name) NOT IN (
+                    {p_values}
+                )
+            '''.format(
+                p_values=','.join([
+                    "('{p_schema}', '{p_table}')".format(
+                        p_schema=v_item.split('.')[0] if '.' in v_item else 'public',
+                        p_table=v_item.split('.')[1] if '.' in v_item else v_item
+                    )
+                    for v_item in p_exclude_tables
+                ])
+            )
+        )
+    else:
+        v_sql = v_sql.format(p_filter='')
 
     def local_inserted_callback(p_row_list=None, p_columns=None, p_row=None, p_key=None):
         """Callback executed when a table is present just in second database.

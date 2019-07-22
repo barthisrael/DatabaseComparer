@@ -463,6 +463,17 @@ if __name__ == '__main__':
         )
 
         v_parser.add_argument(
+            '-e',
+            '--exclude-tables',
+            dest='exclude_tables',
+            help='List of tables to be excluded from tables data comparisons. Will still be considered for tables structure comparison. Example: --exclude-tables {public.table_1, my_schema.table_2}.',
+            type=str,
+            default=[],
+            nargs='+',
+            required=False
+        )
+
+        v_parser.add_argument(
             '-s',
             '--source-database-connection',
             dest='source_database_connection',
@@ -635,7 +646,8 @@ if __name__ == '__main__':
                 p_password=v_target_params[4],
                 p_application_name='compare_databases'
             ),
-            p_block_size=v_options.block_size
+            p_block_size=v_options.block_size,
+            p_exclude_tables=v_options.exclude_tables
         )
 
         v_producers_task_list += workers.compare_tables_excludes.get_compare_tables_excludes_tasks()
