@@ -115,7 +115,7 @@ def updated_callback(p_queue=None, p_columns=None, p_row_1=None, p_row_2=None, p
                     'sql': inspect.cleandoc(
                         doc='''\
                             ALTER TABLE {p_schema}.{p_table}
-                            ALTER COLUMN {p_column} {p_operation} NOT NULL;
+                            ALTER COLUMN {p_column} {p_nullable} NOT NULL;
                         '''.format(
                             p_schema=p_row_2['table_schema'],
                             p_table=p_row_2['table_name'],
