@@ -63,9 +63,9 @@ def get_output_sql(p_type=None, p_row=None):
     if not isinstance(p_type, str):
         raise workers.custom_exceptions.InvalidParameterTypeException('"p_type" parameter must be a "str" instance.', p_type)
 
-    if p_type not in ['functions', 'indexes', 'mviews', 'procedures', 'schemas', 'sequences', 'tables_checks', 'tables_columns', 'tables_data', 'tables_exludes', 'tables_fks', 'tables_pks', 'tables_rules', 'tables_triggers', 'tables_uniques', 'tables', 'trigger_functions', 'views']:
+    if p_type not in ['functions', 'indexes', 'mviews', 'procedures', 'schemas', 'sequences', 'tables_checks', 'tables_columns', 'tables_data', 'tables_excludes', 'tables_fks', 'tables_pks', 'tables_rules', 'tables_triggers', 'tables_uniques', 'tables', 'trigger_functions', 'views']:
         raise workers.custom_exceptions.InvalidParameterValueException(
-            '"p_type" parameter must be one between: functions, indexes, mviews, procedures, schemas, sequences, tables_checks, tables_columns, tables_data, tables_exludes, tables_fks, tables_pks, tables_rules, tables_triggers, tables_uniques, tables, trigger_functions, views.',
+            '"p_type" parameter must be one between: functions, indexes, mviews, procedures, schemas, sequences, tables_checks, tables_columns, tables_data, tables_excludes, tables_fks, tables_pks, tables_rules, tables_triggers, tables_uniques, tables, trigger_functions, views.',
             p_type
         )
 
@@ -220,7 +220,7 @@ def get_output_sql(p_type=None, p_row=None):
             p_status=p_row['status'],
             p_sql=p_row['sql']
         )
-    elif p_type == 'tables_exludes':
+    elif p_type == 'tables_excludes':
         v_sql = '''
             SELECT database_comparer_report.output_report_fnc_add (
                 p_category := '{p_category}',
