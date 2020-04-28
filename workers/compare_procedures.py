@@ -179,7 +179,7 @@ def compare_procedures(p_database_1=None, p_database_2=None, p_block_size=None, 
                    p.prosrc AS procedure_definition,
                    PG_GET_FUNCTIONDEF((n.nspname || '.' || p.proname || '(' || oidvectortypes(p.proargtypes) || ')')::regprocedure) AS create_procedure_ddl,
                    FORMAT(
-                       'DROP FUNCTION %s;',
+                       'DROP PROCEDURE %s;',
                        n.nspname || '.' || p.proname || '(' || oidvectortypes(p.proargtypes) || ')'
                    ) AS drop_procedure_ddl
             FROM (
